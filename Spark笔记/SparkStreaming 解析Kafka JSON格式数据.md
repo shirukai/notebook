@@ -1,6 +1,14 @@
 # SparkStreaming 解析Kafka JSON格式数据
 
-> 项目记录：在项目中，SparkStreaming整合Kafka时，通常Kafka发送的数据是以JSON字符串形式发送的，这里总结了五种SparkStreaming解析Kafka中JSON格式数据并转为DataFrame进行数据分析的方法。
+> 版本说明：
+>
+> Spark 2.3.0
+>
+> Kafka 2.11-2.0.0
+
+# 前言
+
+在项目中，SparkStreaming整合Kafka时，通常Kafka发送的数据是以JSON字符串形式发送的，这里总结了五种SparkStreaming解析Kafka中JSON格式数据并转为DataFrame进行数据分析的方法。
 
 需求：将如下JSON格式的数据
 
@@ -10,7 +18,7 @@
 
 ![](http://shirukai.gitee.io/images/8f8edce3f9d84668c263502d633b8384.jpg)
 
-## 1 使用Python脚本创建造数器
+# 1 使用Python脚本创建造数器
 
 随机生成如上图所示的JSON格式的数据，并将它发送到Kafka。造数器脚本代码如下所示：
 
@@ -122,9 +130,9 @@ if __name__ == '__main__':
 
 ![](http://shirukai.gitee.io/images/adf14b30503df314496556350c269b69.jpg)
 
-## 2 Spark Streaming 处理JSON格式数据
+# 2 Spark Streaming 处理JSON格式数据
 
-### 2.1 方法一：处理JSON字符串为case class 生成RDD[case class] 然后直接转成DataFrame
+## 2.1 方法一：处理JSON字符串为case class 生成RDD[case class] 然后直接转成DataFrame
 
 思路：Spark Streaming从Kafka读到数据后，先通过自定义的handleMessage2CaseClass方法进行一次转换，将JSON字符串转换成指定格式的case class：[KafkaMessage]，然后通过foreachRDD拿到RDD[KafkaMessage]类型的的rdd，最后直接通过spark.createDataFrame(RDD[KafkaMessage])。思路来源如下图所示：
 
@@ -169,7 +177,7 @@ case class KafkaMessage(time: String, namespace: String, id: String, region: Str
 </dependency>
 ```
 
-### 2.2 方法二：处理JSON字符串为Tuple 生成RDD[Tuple] 然后转成DataFrame
+## 2.2 方法二：处理JSON字符串为Tuple 生成RDD[Tuple] 然后转成DataFrame
 
 思路：此方法的思路与方法一的思路相同，只不过不转为Case Class 而是转为Tuple，思路来源如下图所示：
 
@@ -201,7 +209,7 @@ handleMessage2Tuples方法：
   }
 ```
 
-### 2.3  方法三：处理JSON字符串为Row 生成RDD[Row] 然后通过schema创建DataFrame
+## 2.3  方法三：处理JSON字符串为Row 生成RDD[Row] 然后通过schema创建DataFrame
 
 思路：SparkStreaming从kafka读到数据之后，先通过handlerMessage2Row自定义的方法，将JSON字符串转成Row类型，然后通过foreachRDD拿到RDD[Row]类型的RDD，最后通过Spark.createDataFrame(RDD[Row],Schema)生成DataFrame，思路来源：
 
@@ -238,7 +246,7 @@ handlerMessage2Row方法：
   }
 ```
 
-### 2.4 方法四：直接将 RDD[String] 转成DataSet 然后通过schema转换
+## 2.4 方法四：直接将 RDD[String] 转成DataSet 然后通过schema转换
 
 思路：直接通过foreachRDD拿到RDD[String]类型的RDD，然后通过spark.createDataSet(RDD[String])方法生成只含有一列value列的DataSet，然后通过Spark SQL 内置函数 from_json格式化json字符串，然后取每一列的值生成DataFrame。思路来源：
 
@@ -271,7 +279,7 @@ handlerMessage2Row方法：
 
 
 
-### 2.5 方法五：直接将 RDD[String] 转成DataSet 然后通过read.json转成DataFrame
+## 2.5 方法五：直接将 RDD[String] 转成DataSet 然后通过read.json转成DataFrame
 
 思路：直接通过foreachRDD拿到RDD[String]类型的RDD,然后通过spark.createDataSet创建DataSet，最后通过spark.read.json(DataSet[String])方法来创建DataFrame。此方法代码量最小，不需要指定schema，不需要进行json转换。思路来源：
 
@@ -291,11 +299,11 @@ handlerMessage2Row方法：
     })
 ```
 
-## 3 对生成的DataFrame进行分析
+# 3 对生成的DataFrame进行分析
 
 通过上面方法我们已经可以拿到一个如期所欲的DataFrame了，接下来就是使用Spark SQL 对数据进行分析处理。
 
-### 3.1 需求1：将time列的时间由原来的2018-11-07 17:08:43字符串格式，转成：yyyyMMdd这种格式，生成新的列，并命名为day列。
+## 3.1 需求1：将time列的时间由原来的2018-11-07 17:08:43字符串格式，转成：yyyyMMdd这种格式，生成新的列，并命名为day列。
 
 实现代码：
 
@@ -309,7 +317,7 @@ handlerMessage2Row方法：
 
 ![](http://shirukai.gitee.io/images/8324ef057225a8ce45e37c20e2ab60eb.jpg)
 
-### 3.2 需求2：按照Day列和namespae列进行分区，并保存到文件。
+## 3.2 需求2：按照Day列和namespae列进行分区，并保存到文件。
 
 实现代码：
 
@@ -323,15 +331,15 @@ df.write.mode(SaveMode.Append)
 
 ![](http://shirukai.gitee.io/images/507741bef57ea98e32f314fbd6f9b682.jpg)
 
-## 4 一些思考？
+# 4 一些思考？
 
-### 4.1 思考1：如果json格式为[]数组该如何处理？
+## 4.1 思考1：如果json格式为[]数组该如何处理？
 
 上面我们处理的json字符串都是{}都是对象格式的，那么如果Kafka里的数据是以[]数组字符串的格式存储的，那么我们该如何处理呢？
 
 这里暂且提供两种方法：
 
-#### 4.1.1 第一种：通过handleMessage自定义方法处理JSON字符串为Array[case class]，然后通过flatmap展开，再通过foreachRDD拿到RDD[case class]格式的RDD，最后直接转成DataFrame。
+### 4.1.1 第一种：通过handleMessage自定义方法处理JSON字符串为Array[case class]，然后通过flatmap展开，再通过foreachRDD拿到RDD[case class]格式的RDD，最后直接转成DataFrame。
 
 handleMessage方法：
 
@@ -358,7 +366,7 @@ handleMessage方法：
 
 注意：这里不能直接使用flatMap(_)，需要使用flatMap(x=>x)。或者改成stream.map(_.value()).flatMap(handleMessage).foreachRDD(……）
 
-#### 4.1.2 第二种：直接处理RDD[String]，创建DataSet，然后通过Spark SQL 内置函数from_json和指定的schema格式化json数据，然后再通过内置函数explode展开数组格式的json数据，最后通过select json中的每一个key，获得最终的DataFrame
+### 4.1.2 第二种：直接处理RDD[String]，创建DataSet，然后通过Spark SQL 内置函数from_json和指定的schema格式化json数据，然后再通过内置函数explode展开数组格式的json数据，最后通过select json中的每一个key，获得最终的DataFrame
 
 核心代码：
 
@@ -386,7 +394,7 @@ handleMessage方法：
     })
 ```
 
-### 4.2 思考2：如果使用StructStreaming该如何处理json数据？
+## 4.2 思考2：如果使用StructStreaming该如何处理json数据？
 
 StructStreaming是一个结构式流，实际拿到的就是一个DataFrame，所以可以使用上面的第四种方法来解析json数据。
 
@@ -448,7 +456,7 @@ object HandleJSONDataByStructStreaming {
 
 ![](http://shirukai.gitee.io/images/409a635f7c1adeef4b41bd39a3795218.jpg)
 
-## 完整代码：
+# 5 完整代码：
 
 ```scala
 package com.hollysys.spark.streaming.kafkajson
@@ -629,7 +637,7 @@ case class KafkaMessage(time: String, namespace: String, id: String, region: Str
 
 
 
-## 总结
+# 6 总结
 
 目前只想到了上面五种方法，如果有其它思路后续会补上。对比这五种方法，不考虑性能问题，从代码量和灵活度来看，第五种方法是比较好的，因为不需要我们指定schema信息。其次是第一种，不过需要事先定义好case class。另外，在上面的前三种方法中，我们都用到了将json转换成不同对象的方法，但是第一种用的是谷歌的gson后两种用的是阿里的fastjson。是因为，创建DataFrame的时候只支持case class，而当我们使用fastjson的JSON.pares(jsonStr,classOf[KafkaMessage])时会报错，因为fastjson无法将json字符串转成case class对象。所以这里选用的gson。
 

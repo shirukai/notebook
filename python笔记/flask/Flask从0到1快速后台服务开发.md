@@ -95,6 +95,41 @@ from flask import request
 from flask import session
 ```
 
+这里做点补充，上面提到Flask的上下文信息，从源码中我们可以看出，除了request对象和session对象之外，flask还提供了current_app和g两个对象。
+
+| 变量名称    | 上下文     | 说明                                                   |
+| ----------- | ---------- | ------------------------------------------------------ |
+| current_app | 应用上下文 | 当前Flask应用的应用实例                                |
+| g           | 应用上下文 | 处理请求时用作临时存储的对象，每次请求都会重设这个变量 |
+| requset     | 请求上下文 | 请求对象，分装了客户端发出的HTTP请求中的内容           |
+| session     | 请求上下文 | 用户会话，值作为一个字典，存储请求之前需要"记住"的值   |
+
+**request请求对象**
+
+| 属性或方法   | 说明                                                         |
+| ------------ | ------------------------------------------------------------ |
+| form         | 字典，存储请求提交的所有表单数据                             |
+| args         | 字典，存储通过URL传递的所有参数                              |
+| values       | 字典，form和args的合集                                       |
+| cookies      | 字典，存储请求的所有cookie                                   |
+| headers      | 字典，存储请请的所有HTTP首部                                 |
+| files        | 字典，存储请求上传的所有文件                                 |
+| get_data()   | 返回请求主题缓冲的数据                                       |
+| get_json()   | 返回一个Python字典，包含解析请求body后得到的JSON             |
+| blueprint    | 蓝图名称                                                     |
+| endpoint     | 处理请求的Flask端点名称，Flask把视图函数的名称称作路由端点的名称 |
+| method       | HTTP请求方法，例如GET\POST                                   |
+| scheme       | URL方案(http活https)                                         |
+| is_secure()  | 通过安全的连接(HTTPS)发送请求时返回True                      |
+| host         | 请求主机的主机名，如客户端定义了端口号，还包括端口号         |
+| path         | URL的路径部分                                                |
+| query_string | URL的查询参数部分，如：?name=joke&age=18                     |
+| full_path    | URL的路径和查询参数部分                                      |
+| url          | 客户端请求的完整URL                                          |
+| base_url     | 同url，但没有查询字符串部分                                  |
+| remote_addr  | 客户端的IP地址                                               |
+| environ      | 请求的原始WSGI环境字典                                       |
+
 ### 3.2.1 获取URL上的参数
 
 对于url上参数，例如/params/url?name=joke，我们要想获取参数，可以使用request.args方法获取一个ImmutableMultiDict类型的参数列表，也可以通过get方法直接获取该参数的值，如下所示：
@@ -107,7 +142,7 @@ def params_url():
     return ""
 ```
 
-url上的参数除了?和&传参之外，也支持RESTFul风格的传参，如/params/rest/\<id>。
+url上的参数除了?和&传参之外，也支持RESTFul风格的动态传参，如/params/rest/\<id>，类似\<id\>这样的动态参数，默认解析为string类型，当然我们可以指定其它类型，如指定id为int类型，只是匹配整型的url，如/rest/1。Flask支持的类型：string、int、flot和path类型，path类型是一种特殊的字符串，与string类型不同的是，它可以包含正斜线。
 
 ```python
 @app.route("/params/rest/", defaults={'id': '1'})
@@ -186,9 +221,23 @@ def params_file():
     file.save(file.filename)
 ```
 
-## 3.3 返回请求结果
+## 3.3 返回请求响应
 
-通常我们的请求结果不过几种，返回一个页面，返回一个json字符串，返回一个文件。
+通常我们的请求响应不过几种，返回一个页面，返回一个json字符串，返回一个文件。对于Flask的响应，我们可以直接返回1个参数作为内容，如
+
+```python
+return "hello world!"
+```
+
+也可以返回2个参数，第二个参数为响应的状态码，如
+
+```python
+return "hello world!",400
+```
+
+也可以返回3个参数，第三个参数为响应的头信息，参数以字典的形式指定。
+
+
 
 ### 3.3.1 返回一个页面
 
@@ -300,9 +349,13 @@ requset.cookies['test']
 
 ### 3.5.2 设置cookie
 
+
+
 ## 3.6 session的获取与设置
 
 //todo
+
+## 3.7 请求钩子
 
 #  4 Flask蓝图
 
