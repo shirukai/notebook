@@ -235,9 +235,26 @@ return "hello world!"
 return "hello world!",400
 ```
 
-也可以返回3个参数，第三个参数为响应的头信息，参数以字典的形式指定。
+也可以返回3个参数，第三个参数为响应的头信息，参数以字典的形式指定，如
 
+```python
+return "hello world!",400,{"Server":"Werkzeug/0.15.2 Python/2.7.16"}
+```
 
+也可以通过make_reponse()方法自定义响应对象，后面会提到。
+
+**Flask响应对象**
+
+| 属性和方法      | 说明                                       |
+| --------------- | ------------------------------------------ |
+| status_code     | HTTP 数字状态码                            |
+| headers         | 一个类似字典的对象，包含响应发送的所有首部 |
+| set_cookie()    | 为响应添加一个cookie                       |
+| delete_cookie() | 删除一个cookie                             |
+| content_length  | 响应主体的长度                             |
+| content_type    | 响应主体的媒体类型                         |
+| set_data()      | 使用字符串或字节值设定响应                 |
+| get_data()      | 获取响应主体                               |
 
 ### 3.3.1 返回一个页面
 
