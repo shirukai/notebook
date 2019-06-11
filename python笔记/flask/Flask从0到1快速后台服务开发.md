@@ -366,13 +366,138 @@ requset.cookies['test']
 
 ### 3.5.2 设置cookie
 
+在上文中的response对象的属性和方法表格中，提到有set_cookie()方法，这个方法就是用来设置cookie的，那么该方法如何使用，需要如何传参呢？先看一下源码。
 
+```python
+ def set_cookie(
+        self,
+        key,
+        value="",
+        max_age=None,
+        expires=None,
+        path="/",
+        domain=None,
+        secure=False,
+        httponly=False,
+        samesite=None,
+    ):
+    pass
+```
+
+参数说明：
+
+| 参数名称 | 说明                                                         |
+| -------- | ------------------------------------------------------------ |
+| key      | 设置cookie的key                                              |
+| value    | 设置cookie的value                                            |
+| max_age  | 设置最大过期时长，单位秒，多少秒之后过期，默认为None         |
+| expires  | 设置过期时间，什么时间点过期，可以设置datatime对象或者时间戳 |
+| path     | 将cookie限制为给定路径，默认情况下它将跨越整个域             |
+| domain   | 设置cookie的域范围，如果想设置跨域cookie，如设置domain='.example.com'，允许'www.example.com'和'foo.example.com'等类似的域访问。否则，cookie只能由设置的域访问。 |
+| secure   | 如果设为“True”，则cookie只能通过HTTPS获得                    |
+| httponly | 禁止JavaScript访问cookie。这是cookie标准的扩展，可能并非所有浏览器都支持 |
+| samesite | 限制cookie的范围，使其仅在请求是“同一站点”时附加到请求       |
+
+使用：
+
+```python
+@app.route("/response", methods=['GET'])
+def response_test():
+    data = {
+        "test": "123"
+    }
+    res = Response(data, status=500, headers={'Content-Type': 'application/json'})
+    res.set_cookie("test_key", "test_value", max_age=20)
+    return res;
+```
+
+### 3.5.3 删除cookie
+
+删除cookie使用delete_cookie(key)即可。
 
 ## 3.6 session的获取与设置
 
-//todo
+session在flask中是一个神奇的存在，它的本质其实就是经过加密的cookie。所以要想使用session，我们需要给flask设置盐值秘钥SECRET_KEY，flask使用它来进行加密解密。设置SECRET_KEY可以直接在app配置中添加config，如：
+
+```python
+app.config['SECRET_KEY']='xxxxx'
+```
+
+上文中也有提及，flask提供了几种上下文对象，其中session也被作为单独的上下文对象在flask应用中提供，通过下面方式，拿到该对象。
+
+```python
+from flask import session
+```
+
+对于session的操作，类似于操作字典，可以使用如下方法和属性
+
+![](https://raw.githubusercontent.com/shirukai/images/master/a92a0b573dd7f2c100edc211eab71e46.jpg)
+
+### 3.6.1 获取session
+
+获取session有两种方式，直接获取
+
+```python
+session['session_key']
+```
+
+这种方式，有种弊端，当session_key对应的session不存在时，会报异常。可以使用get()方法获取
+
+```python
+session.get('session_key')
+```
+
+这种方式，不会抛出异常，如果不存在会返回None。
+
+### 3.6.2 设置session
+
+设置session我们可以像给字典赋值一样，给session赋值。
+
+```python
+session['session_key']='session_value'
+```
+
+### 3.6.3 删除session
+
+删除session我们可以使用pop()方法
+
+```python
+session.pop('session_key')
+```
+
+### 3.6.4 清空所有session
+
+要想清空session，可以使用clear()方法
+
+```
+session.clear()
+```
+
+### 3.6.5 设置session过期时间
+
+在Flask中session的过期机制是这样的，如果没有设置sesion过期时间，那么默认浏览器关闭时销毁session。我们可以通过设置permanent参数为True，来延长过期时间，默认为31天，当然我们也可以通过给app.config设置PERMANENT_SESSION_LIFETIME来更改过期时间，这个值的数据类型是datetime.timedelay类型。
+
+设置session为31天
+
+```python
+session['session_key']='session_value'
+session.permanent=True
+```
+
+自定义时长
+
+```python
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7) 
+```
 
 ## 3.7 请求钩子
+
+讲完了请求和响应，这里补充一下flask中的几种请求钩子，钩子的作用很常见，比如我们需要在执行某个请求之前，或者之后进行一些逻辑处理。Flask提供的钩子是通过装饰器实现，提供如下四种钩子。
+
+* before_request：注册一个函数，在每次请求之前执行。
+* before_first_request：注册一个函数，只在处理第一个请求之前运行。可以通过这个钩子添加服务器初始化任务。
+* after_request：注册一个函数，如果没有未处理的异常抛出，在每次请求之后运行。
+* teardow_request：注册一个函数，即使有未处理的异常抛出，也在每次请求之后运行。
 
 #  4 Flask蓝图
 
@@ -508,7 +633,7 @@ def create_blueprint_v1():
 
 ## 5.4 注册蓝图
 
-蓝图的注册方式，与不同方式相同，只不过蓝图，需要通过create_blueprint_v1()方法创建。
+蓝图的注册方式，与之前方式相同，只不过蓝图，需要通过create_blueprint_v1()方法创建。
 
 ```python
 # register blueprint by redprint
@@ -529,7 +654,7 @@ app.register_blueprint(blueprint=create_blueprint_v1())
 
 #  6 ORM插件 Flask-SQLAlchemy
 
-通过上面几个小节，我们已经可以快读的创建一个web服务，能够处理简单的请求并返回相应的内容。而且可以使用蓝图和红图，模块化项目，使项目结构更加清晰。接下来将进一步深入，Flask使用Flask-SQLAlchemy插件对数据库进行CURD操作。这里不对Flask-SQLAlchemy进行深入研究，详细API可以参考官网https://flask-sqlalchemy.palletsprojects.com/en/2.x/。
+通过上面几个小节，我们已经可以快速的创建一个web服务，能够处理简单的请求并返回相应的内容。而且可以使用蓝图和红图，模块化项目，使项目结构更加清晰。接下来将进一步深入，Flask使用Flask-SQLAlchemy插件对数据库进行CRUD操作。这里不对Flask-SQLAlchemy进行深入研究，详细API可以参考官网https://flask-sqlalchemy.palletsprojects.com/en/2.x/。
 
 ## 6.1 安装Flask-SQLAlchemy
 
@@ -690,7 +815,7 @@ PostMan请求
 
 #  7 定时调度插件Flask-APScheduler
 
-前面记录了Flask对请求的处理以及数据库的CURD操作，已经能完成一个简单的后台开发了。下面将进行一些扩展。定时任务，相信在平时的项目里经常会用到，在Java里我们我们可以使用Quartz，可以与Spring很好的整合。对于Python里可以使用APScheduler，官网文档：https://apscheduler.readthedocs.io/en/latest/。而Flask-APScheduler是对APScheduler的封装扩展，使其能与Flask更好的融合。提起这个插件，我有些许头疼，竟没找到详细的官方文档，只定位到了Git仓库的地址：https://github.com/viniciuschiele/flask-apscheduler，而且查某度和Google得到的文章几乎千篇一律，没有详细的介绍。其实Flask-APScheduler的使用与APScheduler类似，这里就花一点时间，整理汇总一下，我对于Flask-APScheduler插件的使用记录。本节将从以下几个方面进行整理：APScheduler特性、动态管理定时任务、定时的几种方式、执行器的配置、持久化定时任务。
+前面记录了Flask对请求的处理以及数据库的CRUD操作，已经能完成一个简单的后台开发了。下面将进行一些扩展，定时任务。相信在平时的项目里经常会用到定时任务，在Java里我们我们可以使用Quartz，它能与Spring很好的整合。对于Python里可以使用APScheduler，官网文档：https://apscheduler.readthedocs.io/en/latest/。而Flask-APScheduler是对APScheduler的封装扩展，使其能与Flask更好的融合。提起这个插件，我有些许头疼，竟没找到详细的官方文档，只定位到了Git仓库的地址：https://github.com/viniciuschiele/flask-apscheduler，而且查某度和Google得到的文章几乎千篇一律，没有详细的介绍。其实Flask-APScheduler的使用与APScheduler类似，这里就花一点时间，整理汇总一下，我对于Flask-APScheduler插件的使用记录。本节将从以下几个方面进行整理：APScheduler特性、动态管理定时任务、定时的几种方式、执行器的配置、持久化定时任务。
 
 ## 7.1 Flask-APScheduler特性
 
@@ -2022,8 +2147,116 @@ easy_install flask-restplus
 
 # 11 Flask项目发布
 
-Flask自动的app.run()启动的web服务是用来开发的，并不适合生成环境，所以官方不建议使用app.run()作为生产的容器。关于Flask的项目发布，官方也提供了几种方式，具体的可以参考：https://dormousehole.readthedocs.io/en/latest/deploying/。(待补充)
+Flask自动的app.run()启动的web服务是用来开发的，并不适合生成环境，所以官方不建议使用app.run()作为生产的容器。关于Flask的项目发布，官方也提供了几种方式，具体的可以参考：https://dormousehole.readthedocs.io/en/latest/deploying/。这里就不一一讲解，因为这个地方我接触的也不多，暂且只写一下使用uWSGI进行Flask项目的发布吧。
+
+## 11.1 安装uWSGI
+
+使用pip安装uwsgi
+
+```shell
+pip install uwsgi
+```
+
+## 11.2 uwsgi命令的方式启动flask项目
+
+这里以flask-framework-redprint这个项目为例子，使用uwsgi命令行启动服务。
+
+```python
+uwsgi --http :18666 --wsgi-file manager.py --callable app
+```
+
+![](https://raw.githubusercontent.com/shirukai/images/master/1c4adad980ed559be923754483aa3c4d.jpg)
+
+## 11.3 使用配置文件的方式启动flask项目
+
+上面使用命令可以简单的启动一个flask服务，但是如果命令参数比较多，使用命令就比较繁琐，这时候我们可以通过配置文件的方式启动。给我们的flask项目设置一个uwsgi配置文件。同样是以flask-framework-redprint为例，在项目根目录创建一个名为uwsgi.ini的配置文件，内容如下：
+
+```ini
+[uwsgi]
+wsgi-file = manager.py
+callable = app
+gevent = 1000
+http-websockets = true
+master = true
+http = 0.0.0.0:18666
+```
+
+启动服务
+
+```shell
+uwsgi uwsgi.ini
+```
+
+效果与命令行一样。
 
 # 12 Flask项目容器化
 
-(待补充)
+docker，docker快到碗里来，flask，flask快到docker里来。我们项目部署大多都是使用docker，这里不禁要感慨一下，记得之前使用spring mvc的时候，需要一大把的xml文件，去配置bean，去配置mybatis等等，启动的时候还需要打成war放到tomcat里，繁琐易出错。现在使用spring boot简化了太多的配置，而且自带web容器，方便到爱不释手，在加上docker加持，从开发到生产节省了太多的精力了。说这么多，只是想表达，新技术给我们带来的极大的便利。接触docker不长，但已经被深深的吸引。上面再讲Flask定时任务插件时，提到的几种持久化方式，像Redis、RethinkDB、MongoDB、还有Zookeeper等，我都是通过docker部署的，几乎是一条命令，就部署完成了，节省了太多部署步骤。所以这里也简单讲一下，如何将我们的Flask服务容器化。
+
+## 12.1 使用Dockerfile创建容器镜像
+
+在项目根目录创建名为Dockerfile的文件，内容如下：
+
+```python
+FROM python:3
+ARG SERVER_PORT=18666
+MAINTAINER shirukai "shirukai@hollysys.net"
+
+# set work dir
+WORKDIR flask-framework-redprint
+
+# copy server files
+COPY . .
+
+# install dependencies
+RUN pip install --no-cache-dir -r requirements.txt -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+
+# expose server port
+EXPOSE ${SERVER_PORT}
+
+# set time zone
+ENV TZ Asia/Shanghai
+# start flask service when the container starts
+CMD uwsgi uwsgi.ini
+```
+
+在项目路径执行docker命令创建镜像
+
+```shell
+ docker build -t flask-framework-redprint:v1 .
+```
+
+![](https://raw.githubusercontent.com/shirukai/images/master/c599967f0f27f726316a25c615b2e3d6.gif)
+
+等待创建完成，我们可以使用docker images查看我们的镜像。
+
+## 12.2 启动容器
+
+镜像创建完成之后，我们就可以启动我们的docekr容器了，使用如下命令运行
+
+```python
+docker run -itd -p 18666:18666 flask-framework-redprint:v1
+```
+
+查看容器状态
+
+```shell
+docker ps
+```
+
+
+
+![](https://raw.githubusercontent.com/shirukai/images/master/7f273f811100893d65a639508089a1c3.jpg)
+
+查看容器日志
+
+````shell
+docekr logs 8ca71365a64e
+````
+
+访问localhost:18666查看
+
+![](https://raw.githubusercontent.com/shirukai/images/master/3d129bd4de7f89fd987b285f692a2329.jpg)
+
+# 总结
+
